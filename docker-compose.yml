@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # Go-based chat server
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - DB_CONNECTION_STRING=postgres://postgres:henry@postgres:5432/test?sslmode=disable
+      - REDIS_HOST=chat-redis-1
+      - PROMETHEUS_URL=http://prometheus:9090
+      - ENABLE_PROMETHEUS=${ENABLE_PROMETHEUS:-false} # 默認為 false
+    networks:
+      - backend
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: henry
+      POSTGRES_DB: test
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis cache
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "localhost", "PING"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Prometheus (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - backend
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  backend:
+    driver: bridge
+
+# 使用自定義的啟用選項來控制 Prometheus 的啟動
+x-enable-prometheus:
+  &enable-prometheus
+  deploy:
+    replicas: 0  # 默認不啟用

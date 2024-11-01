@@ -1,0 +1,26 @@
+*.exe
+*.out
+*.bin
+*.o
+*.a
+*.so
+*.dll
+*.bat
+*.log
+
+vendor/
+tmp/
+data/
+
+# IDE specific files
+.vscode
+.idea
+
+# build output
+air
+
+# others
+*.jar
+*.log
+*/.DS_Store
+.DS_Store
