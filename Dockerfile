@@ -28,6 +28,9 @@ COPY --from=builder /app/myapp /myapp
 # 在建構階段中添加前端構建檔案的複製
 COPY --from=builder /app/chat-app/build ./chat-app/build
 
+# 在建構階段中添加測試資料的複製
+COPY --from=builder /app/combined_sensitive_words.xlsx ./combined_sensitive_words.xlsx
+
 # 暴露應用程式埠
 EXPOSE 8080
 

@@ -23,8 +23,6 @@ func InitRedis() (*redis.Client, error) {
 		DB:       0,
 	})
 
-	log.Printf("Redis Host: %s", redisHost)
-
 	// 创建一个5秒超时的上下文，确保不会无限等待
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

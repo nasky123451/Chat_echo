@@ -13,7 +13,8 @@ import {
   Divider,
   Card,
 } from '@mui/material';
-import { Menu as MenuIcon, Close as CloseIcon } from '@mui/icons-material';
+import { Menu as MenuIcon, Close as CloseIcon, ArrowDownward as ArrowDownwardIcon } from '@mui/icons-material';
+import { Tooltip } from '@mui/material';
 
 const Chat = () => {
   const [currentUser, setCurrentUser] = useState('');
@@ -27,6 +28,9 @@ const Chat = () => {
   const chatContainerRef = useRef(null);
   const [noMoreMessages, setNoMoreMessages] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [isAutoScroll, setIsAutoScroll] = useState(true);
+  const [showArrow, setShowArrow] = useState(true);
+  const autoScrollIntervalRef = useRef(null);
 
   const connectWebSocket = () => {
     const token = localStorage.getItem('token');
@@ -45,6 +49,11 @@ const Chat = () => {
     
         if (msg.type === "message") {
           setMessages((prevMessages) => [...prevMessages, msg]);
+          if (isAutoScroll) {
+            scrollToBottom();
+          } else {
+            setShowArrow(true);
+          }
           if (chatContainerRef.current.scrollHeight - chatContainerRef.current.scrollTop === chatContainerRef.current.clientHeight) {
             scrollToBottom();
           }
@@ -173,6 +182,8 @@ const Chat = () => {
     }
   };
 
+
+
   // 滚动到聊天底部
   const scrollToBottom = () => {
     if (messageEndRef.current) {
@@ -182,6 +193,10 @@ const Chat = () => {
 
   // 处理聊天记录获取
   const fetchMessages = async (date, room, separator) => {
+    if (noMoreMessages) {
+      return null;
+    }
+    
     try {
       const response = await fetch(`/chat-history?date=${date || new Date().toISOString().split('T')[0]}&room=${room}`, {
         method: 'GET',
@@ -261,7 +276,6 @@ const Chat = () => {
     setMessageInput('');
   };
 
-  // 处理滚动事件，加载更多消息
   const handleScroll = (e) => {
     const { scrollTop } = e.target;
 
@@ -275,7 +289,35 @@ const Chat = () => {
 
       fetchMessages(previousDate, 'general', true);
     }
+
+    setIsAutoScroll(scrollTop + chatContainerRef.current.clientHeight >= chatContainerRef.current.scrollHeight);
+    setShowArrow(!isAutoScroll);
   };
+
+  const handleMouseWheel = (e) => {
+    setIsAutoScroll(e.deltaY >= 0); // 滾動向下
+  };
+
+  const handleArrowClick = () => {
+    setIsAutoScroll(true);
+    scrollToBottom();
+    autoScrollIntervalRef.current = setInterval(scrollToBottom, 1000); // 每秒滾動到底部
+  };
+
+  useEffect(() => {
+    const handleMouseWheelScroll = (event) => {
+      if (event.deltaY < 0) {
+        clearInterval(autoScrollIntervalRef.current); // 停止自動滾動
+      }
+    };
+
+    window.addEventListener('wheel', handleMouseWheelScroll);
+
+    return () => {
+      clearInterval(autoScrollIntervalRef.current);
+      window.removeEventListener('wheel', handleMouseWheelScroll);
+    };
+  }, []);
 
   // 登出功能
   const logout = () => {
@@ -366,6 +408,7 @@ const Chat = () => {
               backgroundColor: '#f9f9f9' 
             }}
             onScroll={handleScroll}
+            onWheel={handleMouseWheel}
           >
             {noMoreMessages && (
               <Typography variant="body2" color="textSecondary" align="center" style={{ marginBottom: '10px' }}>
@@ -403,8 +446,22 @@ const Chat = () => {
             ))}
             <div ref={messageEndRef} />
           </Box>
+          <Tooltip title="自動至底" arrow>
+            {showArrow && (
+              <IconButton 
+                onClick={handleArrowClick}
+                sx={{ 
+                  position: 'absolute', 
+                  bottom: 16,
+                  right: 16,
+                  zIndex: 1
+                }}
+              >
+                <ArrowDownwardIcon />
+              </IconButton>
+            )}
+          </Tooltip>
         </Card>
-  
         <form onSubmit={sendMessage}>
           <TextField 
             value={messageInput}

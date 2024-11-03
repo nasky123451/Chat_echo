@@ -64,7 +64,12 @@ func CheckAndCreateTableChat(db *pgxpool.Pool) error {
 		phone VARCHAR(20),
 		email VARCHAR(100),
 		time TIMESTAMPTZ DEFAULT NOW()
-	);`
+	);
+	
+	INSERT INTO users (username, password, phone, email) 
+	VALUES ('test', '$2a$10$9L8NySy0Udrc9GpFAPLha.rcoxuZe9UW2Qk7mjPivD2P8PfgIn3Sy', '10000000000', 'test@gmail.com');
+	
+	`
 	if err := checkAndCreateTable(db, "users", chatTableSQL); err != nil {
 		return err
 	}
@@ -78,6 +83,15 @@ func CheckAndCreateTableChat(db *pgxpool.Pool) error {
 		time TIMESTAMPTZ DEFAULT NOW()
 	);`
 	if err := checkAndCreateTable(db, "chat_messages", chatTableSQL); err != nil {
+		return err
+	}
+
+	chatTableSQL = `
+		CREATE TABLE sensitive_words (
+		id SERIAL PRIMARY KEY,
+		word VARCHAR(255) UNIQUE NOT NULL
+	);`
+	if err := checkAndCreateTable(db, "sensitive_words", chatTableSQL); err != nil {
 		return err
 	}
 

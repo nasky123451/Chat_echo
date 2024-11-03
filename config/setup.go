@@ -28,6 +28,7 @@ var (
 	AuthKey     = "YOUR_GENERATED_AUTH_KEY"
 	SecretKey   = "YOUR_GENERATED_SECRET_KEY"
 	Log         *logrus.Logger
+	Ac          *AhoCorasick
 
 	// Prometheus metrics
 	RegisterUserCounter = prometheus.NewCounterVec(
@@ -55,12 +56,24 @@ func Init() {
 	var err error
 	// 初始化 Redis 客戶端
 	RedisClient, err = InitRedis()
+	if err != nil {
+		log.Fatalf("Failed to initialize Redis client: %v", err)
+	}
 
 	// 初始化 PostgreSQL
 	PgConn, err = InitDB()
+	if err != nil {
+		log.Fatalf("Failed to initialize PostgreSQL connection: %v", err)
+	}
 
 	if err := CheckAndCreateTableChat(PgConn); err != nil {
 		log.Fatalf("Error checking/creating chat table: %v", err)
+	}
+
+	// 初始化敏感詞處理邏輯
+	Ac, err = InitSensitiveWordHandler()
+	if err != nil {
+		log.Fatalf("Error initializing sensitive word handler: %v", err)
 	}
 
 	// 初始化 Prometheus 监控

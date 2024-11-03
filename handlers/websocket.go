@@ -68,10 +68,12 @@ func HandleWebSocket(c *gin.Context) {
 				continue
 			}
 
+			filteredMessage := config.FilterMessage(content) // 使用过滤后的消息内容
+
 			message := config.ChatMessage{
 				Room:    room,
 				Sender:  sender,
-				Content: content,
+				Content: filteredMessage, // 使用过滤后的消息内容
 				Time:    msgTime,
 			}
 

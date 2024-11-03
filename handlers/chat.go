@@ -53,6 +53,9 @@ func GetChatHistory(c *gin.Context) {
 			return
 		}
 		msg.Room = room
+
+		// msg.Content = config.FilterMessage(msg.Content) // 使用过滤后的消息内容
+
 		messages = append(messages, msg)
 	}
 
@@ -127,6 +130,8 @@ func GetLatestChatDate(c *gin.Context) {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error scanning message"})
 				return
 			}
+
+			// message.Content = config.FilterMessage(message.Content) // 使用过滤后的消息内容
 			dailyMessages = append(dailyMessages, message)
 		}
 
