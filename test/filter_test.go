@@ -1,88 +1,98 @@
 package main
 
 import (
-	"log"
-	"strings"
 	"testing"
 
-	// 將其替換為實際的導入路徑
 	"example.com/m/config"
-	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/go-redis/redis/v8"
 )
 
-// 初始化 Redis 模擬
-func initMockRedis() *redis.Client {
-	rdb := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379", // 修改為你的 Redis 配置
-	})
-	return rdb
+func TestNewAhoCorasick(t *testing.T) {
+	ac := NewAhoCorasick()
+	if ac == nil {
+		t.Errorf("Expected a new AhoCorasick instance, got nil")
+	}
 }
 
-// 測試敏感詞過濾
-func TestSensitiveWordFiltering(t *testing.T) {
-	// 初始化資料庫連接、Redis 連接
-	var err error
-	// 初始化 Redis 客戶端
-	rdb, err = config.InitRedis()
-
-	// 初始化 PostgreSQL
-	pgConn, err = config.InitDB()
-
-	// 創建 PostgreSQL 模擬
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to create mock database: %v", err)
-	}
-	defer db.Close()
-
-	if err != nil {
-		t.Fatalf("failed to connect to mock pg: %v", err)
-	}
-	defer pgConn.Close()
-
-	// 設定模擬的查詢結果
-	rows := sqlmock.NewRows([]string{"word"}).
-		AddRow("死廢物").
-		AddRow("混蛋").
-		AddRow("傻逼")
-
-	// 這裡確保 sqlmock 和 pgxpool 結合正常
-	mock.ExpectQuery("SELECT word FROM sensitive_words").WillReturnRows(rows)
-
-	// 加載敏感詞
-	err = loadSensitiveWords()
-	if err != nil {
-		t.Fatalf("failed to load sensitive words: %v", err)
-	}
-
-	// 建立 Aho-Corasick 機器並插入敏感詞
+func TestInsertAndBuild(t *testing.T) {
 	ac := NewAhoCorasick()
-	for _, word := range sensitiveWords {
-		ac.Insert(word)
-	}
+	ac.Insert("test")
+	ac.Insert("sample")
 	ac.Build()
 
-	// 模擬消息處理
-	message := "這是一條敏感詞測試消息，包含了死廢物和混蛋。"
+	if len(ac.root.children) == 0 {
+		t.Errorf("Expected children to be populated after Insert, got %v", ac.root.children)
+	}
+}
+
+func TestFilter(t *testing.T) {
+	ac := NewAhoCorasick()
+	ac.Insert("badword")
+	ac.Build()
+
+	message := "This is a badword in a sentence."
 	results := ac.Filter(message)
 
-	// 驗證結果
-	expectedResults := map[string]int{
-		"死廢物": 1,
-		"混蛋":  1,
+	if count, exists := results["badword"]; !exists || count != 1 {
+		t.Errorf("Expected 'badword' to be detected once, got %v", results)
 	}
-	for word, expectedCount := range expectedResults {
-		if count, ok := results[word]; !ok || count != expectedCount {
-			t.Errorf("expected %s count: %d, got: %d", word, expectedCount, count)
-		}
+}
+
+func TestLoadSensitiveWords(t *testing.T) {
+	// Mock database connections
+	config.PgConn, _ = config.InitDB()         // Replace with a mock PostgreSQL connection
+	config.RedisClient, _ = config.InitRedis() // Replace with a mock Redis client
+
+	err := loadSensitiveWords()
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
 	}
 
-	// 將檢測到的敏感詞替換為 *
-	filteredMessage := message
-	for word := range results {
-		replacement := strings.Repeat("*", len(word))
-		filteredMessage = strings.ReplaceAll(filteredMessage, word, replacement)
+	if len(sensitiveWords) == 0 {
+		t.Error("Expected sensitive words to be loaded, got none")
 	}
-	log.Println("Filtered message:", filteredMessage)
+}
+
+func TestCheckForSplitSensitiveWords(t *testing.T) {
+	sensitiveWords = []string{"bad", "word"}
+	message := "This is a b.a.d word."
+	results := CheckForSplitSensitiveWords(message)
+
+	if count, exists := results["bad"]; !exists || count != 1 {
+		t.Errorf("Expected 'bad' to be detected once, got %v", results)
+	}
+	if count, exists := results["word"]; !exists || count != 1 {
+		t.Errorf("Expected 'word' to be detected once, got %v", results)
+	}
+}
+
+func TestAddSensitiveWord(t *testing.T) {
+	word := "newbadword"
+	err := addSensitiveWord(word)
+	if err != nil {
+		t.Errorf("Expected no error while adding sensitive word, got %v", err)
+	}
+
+	if !contains(sensitiveWords, word) {
+		t.Errorf("Expected sensitive words to include '%s', got %v", word, sensitiveWords)
+	}
+}
+
+func contains(slice []string, item string) bool {
+	for _, a := range slice {
+		if a == item {
+			return true
+		}
+	}
+	return false
+}
+
+func TestLoadSensitiveWordsFromExcel(t *testing.T) {
+	err := loadSensitiveWordsFromExcel("./combined_sensitive_words.xlsx") // Ensure this test file exists
+	if err != nil {
+		t.Errorf("Expected no error loading sensitive words from Excel, got %v", err)
+	}
+
+	if len(sensitiveWords) == 0 {
+		t.Error("Expected sensitive words to be loaded from Excel, got none")
+	}
 }
