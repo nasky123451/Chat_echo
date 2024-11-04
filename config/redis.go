@@ -11,15 +11,15 @@ import (
 )
 
 func InitRedis() (*redis.Client, error) {
-	redisHost := os.Getenv("REDIS_HOST") // 從環境變數中獲取 Redis 主機
-	// redisPassword := os.Getenv("REDIS_PASSWORD") // 獲取 Redis 密碼
+	redisHost := os.Getenv("REDIS_HOST")         // 從環境變數中獲取 Redis 主機
+	redisPassword := os.Getenv("REDIS_PASSWORD") // 獲取 Redis 密碼
 	if redisHost == "" {
 		redisHost = "localhost"
 	}
 
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     redisHost + ":6379", // 使用主機和預設端口
-		Password: "",                  // 使用環境變數中的密碼
+		Password: redisPassword,       // 使用環境變數中的密碼
 		DB:       0,
 	})
 
