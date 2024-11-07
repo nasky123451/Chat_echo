@@ -376,33 +376,31 @@ const Chat = () => {
       </Drawer>
   
       {/* Main content */}
-      <div style={{ flexGrow: 1, padding: '20px', position: 'relative' }}>
+      <div style={{ flexGrow: 1, padding: '20px', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <IconButton onClick={() => setDrawerOpen(true)}>
           <MenuIcon />
         </IconButton>
-  
-        <Typography variant="h4" gutterBottom align="center">聊天窗口</Typography>
-  
-        {/* Logout Button positioned at the top right */}
+
+        <Typography variant="h4" align="center" sx={{ flexGrow: 1 }}>
+          聊天窗口
+        </Typography>
+
         <Button 
           variant="contained" 
           color="secondary" 
           onClick={logout} 
-          sx={{ 
-            position: 'absolute', 
-            top: 20, 
-            right: 20 
-          }}
         >
           登出
         </Button>
+      </Box>
   
-        <Card sx={{ mb: 2, padding: 2 }}>
+        <Card sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', position: 'relative', mb: 2, padding: 2 }}>
           <Box 
             ref={chatContainerRef}
             sx={{ 
-              height: '400px', 
-              overflowY: 'scroll', 
+              flexGrow: 1,  // 让 Box 占满剩余空间
+              overflowY: 'auto',  // 确保超出时可以滚动
               border: '1px solid #ccc', 
               padding: '10px', 
               backgroundColor: '#f9f9f9' 

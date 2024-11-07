@@ -16,6 +16,7 @@ This is a Golang-based chat application that uses the Aho-Corasick algorithm for
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
   - [Running Tests](#running-tests)
+  - [Running Basic Backend Functionality Tests](#running-basic-backend-functionality-tests)
 - [Future Improvements](#future-improvements)
 
 ## Features
@@ -33,10 +34,10 @@ Prometheus metrics: Integrated with Prometheus for monitoring application perfor
 Chat/
 │
 ├── config/                     # 配置檔案及初始化程式
-│   ├── setup.go
-│   ├── redis.go
-│   ├── postgres.go
-│   ├── logger.go
+│   ├── setup.go                # 初始化應用程式配置
+│   ├── redis.go                # Redis 連接配置與初始化
+│   ├── postgres.go             # PostgreSQL 連接配置與初始化
+│   ├── logger.go               # 應用程式日誌處理邏輯
 │   └── sensitive_word.go       # 敏感詞過濾處理邏輯
 │
 ├── handlers/                   # 處理請求的邏輯，包括路由和控制器
@@ -87,12 +88,15 @@ The WebSocket API handles user authentication, message broadcasting, and user st
 
 #### WebSocket Message Structure
 
+1. **Authentication JSON**:
 ```json
 {
   "type": "auth",
   "token": "JWT-TOKEN"
 }
-
+```
+2. **Chat Message JSON**:
+```json
 {
   "type": "message",
   "room": "room1",
@@ -100,7 +104,9 @@ The WebSocket API handles user authentication, message broadcasting, and user st
   "content": "Hello, World!",
   "time": "2024-11-04T12:34:56Z"
 }
-
+```
+3. **Logout JSON**:
+```json
 {
   "type": "logout"
 }
@@ -175,11 +181,30 @@ If you want to update additional settings, refer to the services section in your
 docker-compose up --build
 ```
 
+### Note
+
+The initial login credentials for the application are:
+
+- Username: test
+- Password: test
+
 ## Running Tests
 Run unit tests for sensitive word filtering, WebSocket, and JWT middleware:
+
 ```bash
 go test ./handlers ./middlewares ./test
 ```
+
+## Running Basic Backend Functionality Tests
+
+To perform simple backend functionality tests, navigate to the test directory and run the following command:
+
+```bash
+cd test
+go run filter.go
+```
+
+This will execute the filter.go file, allowing you to test the backend functionality related to sensitive word filtering.
 
 ## Future Improvements
 
