@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"example.com/m/config"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 )
 
 // 获取聊天记录
-func GetChatHistory(c *gin.Context) {
-	room := c.Query("room")
-	date := c.Query("date") // 格式为 YYYY-MM-DD
+func GetChatHistory(e echo.Context) error {
+	room := e.QueryParam("room")
+	date := e.QueryParam("date") // 格式为 YYYY-MM-DD
 
 	// 解析日期
 	var startDate time.Time
@@ -31,8 +31,7 @@ func GetChatHistory(c *gin.Context) {
 	} else {
 		startDate, err = time.Parse("2006-01-02", date)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid date format"})
-			return
+			return e.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid date format"})
 		}
 		endDate = startDate.Add(24 * time.Hour)
 	}
@@ -40,8 +39,7 @@ func GetChatHistory(c *gin.Context) {
 	// 查询聊天记录
 	rows, err := config.PgConn.Query(config.Ctx, "SELECT sender, content, time FROM chat_messages WHERE room = $1 AND time >= $2 AND time < $3 ORDER BY time ASC", room, startDate, endDate)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching chat history"})
-		return
+		return e.JSON(http.StatusInternalServerError, echo.Map{"error": "Error fetching chat history"})
 	}
 	defer rows.Close()
 
@@ -49,8 +47,7 @@ func GetChatHistory(c *gin.Context) {
 	for rows.Next() {
 		var msg config.ChatMessage
 		if err := rows.Scan(&msg.Sender, &msg.Content, &msg.Time); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error scanning message"})
-			return
+			return e.JSON(http.StatusInternalServerError, echo.Map{"error": "Error scanning message"})
 		}
 		msg.Room = room
 
@@ -61,17 +58,16 @@ func GetChatHistory(c *gin.Context) {
 
 	// 如果没有找到消息，则返回一个状态和消息
 	if len(messages) == 0 {
-		c.JSON(http.StatusOK, gin.H{"messages": []config.ChatMessage{}, "status": "No messages found for the selected date."})
-		return
+		return e.JSON(http.StatusOK, echo.Map{"messages": []config.ChatMessage{}, "status": "No messages found for the selected date."})
 	}
 
 	// 返回找到的消息
-	c.JSON(http.StatusOK, gin.H{"messages": messages, "status": "Success"})
+	return e.JSON(http.StatusOK, echo.Map{"messages": messages, "status": "Success"})
 }
 
 // 获取最新聊天日期
-func GetLatestChatDate(c *gin.Context) {
-	room := c.Query("room") // 获取前端传来的房间参数
+func GetLatestChatDate(e echo.Context) error {
+	room := e.QueryParam("room") // 获取前端传来的房间参数
 	var messages []config.ChatMessage
 	var earliestDate *time.Time
 
@@ -82,14 +78,12 @@ func GetLatestChatDate(c *gin.Context) {
 	err := config.PgConn.QueryRow(config.Ctx, "SELECT MIN(time) FROM chat_messages WHERE room = $1", room).Scan(&earliestDate)
 	if err != nil {
 		config.Logger.Error("Error fetching earliest chat date:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching earliest chat date"})
-		return
+		return e.JSON(http.StatusInternalServerError, echo.Map{"error": "Error fetching earliest chat date"})
 	}
 
 	if earliestDate == nil {
 		config.Logger.Info("No chat messages found for room:", room)
-		c.JSON(http.StatusNotFound, gin.H{"warning": "No chat messages found"})
-		return
+		return e.JSON(http.StatusNotFound, echo.Map{"warning": "No chat messages found"})
 	}
 
 	// 向后推一天以保证比较的完整性
@@ -98,12 +92,11 @@ func GetLatestChatDate(c *gin.Context) {
 
 	// 如果没有记录，直接返回没有更多资料
 	if truncatedDate.IsZero() {
-		c.JSON(http.StatusOK, gin.H{
+		return e.JSON(http.StatusOK, echo.Map{
 			"latestChatDate": "",
 			"totalMessages":  "",
 			"message":        "沒有更多資料",
 		})
-		return
 	}
 
 	for {
@@ -116,8 +109,7 @@ func GetLatestChatDate(c *gin.Context) {
 		`, currentDate.Format("2006-01-02"), room)
 		if err != nil {
 			config.Logger.Error("Error fetching chat messages for date:", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching chat messages"})
-			return
+			return e.JSON(http.StatusInternalServerError, echo.Map{"error": "Error fetching chat messages"})
 		}
 		defer rows.Close()
 
@@ -127,8 +119,7 @@ func GetLatestChatDate(c *gin.Context) {
 			var message config.ChatMessage
 			if err := rows.Scan(&message.ID, &message.Room, &message.Sender, &message.Content, &message.Time); err != nil { // 根据你的结构体字段调整
 				config.Logger.Error("Error scanning message:", err)
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error scanning message"})
-				return
+				return e.JSON(http.StatusInternalServerError, echo.Map{"error": "Error scanning message"})
 			}
 
 			// message.Content = config.FilterMessage(message.Content) // 使用过滤后的消息内容
@@ -148,30 +139,28 @@ func GetLatestChatDate(c *gin.Context) {
 
 		// 如果已经到达最早的日期，返回没有更多资料
 		if currentDate.Before(truncatedDate) {
-			c.JSON(http.StatusOK, gin.H{
+			return e.JSON(http.StatusOK, echo.Map{
 				"latestChatDate": currentDate.Format(time.RFC3339),
 				"totalMessages":  messages,
 				"message":        "沒有更多資料",
 			})
-			return
 		}
 	}
 
 	// 返回最新日期和消息总数
-	c.JSON(http.StatusOK, gin.H{
+	return e.JSON(http.StatusOK, echo.Map{
 		"latestChatDate": currentDate.Format(time.RFC3339),
 		"totalMessages":  messages,
 		"message":        "資料讀取完畢",
 	})
 }
 
-func GetOnlineUsers(c *gin.Context) {
+func GetOnlineUsers(e echo.Context) error {
 	// 获取在线用户列表
 	onlineUsers := []string{}
 	keys, err := config.RedisClient.Keys(config.Ctx, "*").Result() // 获取匹配特定模式的所有键
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching online users"})
-		return
+		return e.JSON(http.StatusInternalServerError, echo.Map{"error": "Error fetching online users"})
 	}
 
 	for _, key := range keys {
@@ -186,5 +175,5 @@ func GetOnlineUsers(c *gin.Context) {
 	}
 
 	log.Printf("Current online users: %v", onlineUsers)
-	c.JSON(http.StatusOK, gin.H{"onlineUsers": onlineUsers})
+	return e.JSON(http.StatusOK, echo.Map{"onlineUsers": onlineUsers})
 }

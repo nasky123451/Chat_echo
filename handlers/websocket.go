@@ -8,18 +8,17 @@ import (
 	"example.com/m/metrics"
 	"example.com/m/middlewares"
 	"example.com/m/utils"
-	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/labstack/echo/v4"
 )
 
 // 处理 WebSocket 连接时更新在线用户状态
-func HandleWebSocket(c *gin.Context) {
-
+func HandleWebSocket(e echo.Context) error {
 	// 升级 HTTP 连接到 WebSocket
-	conn, err := config.Upgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := config.Upgrader.Upgrade(e.Response(), e.Request(), nil)
 	if err != nil {
 		log.Println("Failed to upgrade connection:", err)
-		return
+		return err
 	}
 	defer conn.Close()
 
@@ -113,12 +112,14 @@ func HandleWebSocket(c *gin.Context) {
 
 	// 广播用户下线消息
 	BroadcastUserStatus(username, false)
+
+	return nil
 }
 
 // 广播消息到房间
 func BroadcastMessageToRoom(room string, message config.ChatMessage) {
 	for client, _ := range config.Clients {
-		err := client.WriteJSON(gin.H{
+		err := client.WriteJSON(map[string]interface{}{
 			"type":    "message",
 			"room":    message.Room,
 			"sender":  message.Sender,
@@ -146,7 +147,11 @@ func BroadcastUserStatus(username string, online bool) {
 	var closedClients []*websocket.Conn
 
 	for client := range config.Clients {
-		err := client.WriteJSON(gin.H{"type": "userStatus", "username": username, "status": status})
+		err := client.WriteJSON(map[string]interface{}{
+			"type":     "userStatus",
+			"username": username,
+			"status":   status,
+		})
 		if err != nil {
 			log.Println("Error broadcasting user status:", err)
 			// 记录关闭的客户端

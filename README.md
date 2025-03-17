@@ -136,7 +136,7 @@ User status updates (online/offline) are broadcasted to all connected clients wh
 1. **Clone the repository**:
 
 ```bash
-git clone https://github.com/nasky123451/Chat.git
+git clone https://github.com/nasky123451/Chat_echo
 cd chat-app
 ```
 

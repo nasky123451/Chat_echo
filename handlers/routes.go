@@ -7,87 +7,74 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
-	"github.com/gin-contrib/static"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"example.com/m/middlewares"
 )
 
-func SetupRoutes(r *gin.Engine) {
-
+func SetupRoutes(e *echo.Echo) {
 	// STEP 1：讓所有 SPA 中的檔案可以在正確的路徑被找到
-	r.Use(static.Serve("/", static.LocalFile("./chat-app/build", true)))
+	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
+		Root:   "./chat-app/build",
+		Browse: false,
+	}))
 
 	// STEP 2： serve 靜態檔案
-	r.Static("/css", "public/css/")
-	r.Static("/js", "public/js/")
-	r.Static("/resources", "public/resources/")
-	store := cookie.NewStore([]byte("secret"))
-	r.Use(sessions.Sessions("mysession", store))
-
-	// CSRF 保護
-	//r.Use(gin.WrapH(csrf.Protect([]byte("32-byte-long-auth-key"), csrf.Secure(false))(r)))
+	e.Static("/css", "public/css/")
+	e.Static("/js", "public/js/")
+	e.Static("/resources", "public/resources/")
 
 	// 添加 CORS 支持
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},                                             // 替换为你的前端地址
-		AllowMethods:     []string{"POST", "GET", "OPTIONS"},                        // 确保允许 OPTIONS 方法
-		AllowHeaders:     []string{"Content-Type", "X-CSRF-Token", "Authorization"}, // 添加您需要的自定义头
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{echo.GET, echo.POST, echo.OPTIONS},
+		AllowHeaders:     []string{"Content-Type", "X-CSRF-Token", "Authorization"},
 		AllowCredentials: true,
 	}))
 
 	// 处理 OPTIONS 请求
-	r.OPTIONS("/register", func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*") // 允许所有源
-		c.Header("Access-Control-Allow-Methods", "POST, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type")
-		c.Status(http.StatusNoContent) // 返回 204 No Content
+	e.OPTIONS("/register", func(c echo.Context) error {
+		return c.NoContent(http.StatusNoContent)
 	})
 
 	// 路由设置
-	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
-	r.POST("/register", RegisterUser)
-	r.POST("/login", LoginUser)
-	r.POST("/logout", LogoutUser)
+	e.GET("/metrics", echo.WrapHandler(promhttp.Handler()))
+	e.POST("/register", RegisterUser)
+	e.POST("/login", LoginUser)
+	e.POST("/logout", LogoutUser)
 
-	r.GET("/ws", HandleWebSocket)
+	e.GET("/ws", HandleWebSocket)
 
 	// 使用 JWT 中间件保护以下路由
-	protected := r.Group("/")
-	protected.Use(middlewares.MiddlewareJWT())
-	{
-		protected.OPTIONS("/online-users", func(c *gin.Context) {
-			c.Status(http.StatusNoContent)
-		})
-
-		protected.OPTIONS("/latest-chat-date", func(c *gin.Context) {
-			c.Status(http.StatusNoContent)
-		})
-
-		protected.GET("/online-users", GetOnlineUsers)
-		protected.GET("/chat-history", GetChatHistory)
-		protected.GET("/latest-chat-date", GetLatestChatDate)
-	}
-
-	r.NoRoute(func(ctx *gin.Context) {
-		file, _ := ioutil.ReadFile("./chat-app/build/index.html")
-		etag := fmt.Sprintf("%x", md5.Sum(file)) //nolint:gosec
-
-		ctx.Header("ETag", etag)
-		ctx.Header("Cache-Control", "no-cache")
-		if match := ctx.GetHeader("If-None-Match"); match != "" {
-			if strings.Contains(match, etag) {
-				ctx.Status(http.StatusNotModified)
-
-				//這裡若沒 return 的話，會執行到 ctx.Data
-				return
-			}
-		}
-
-		ctx.Data(http.StatusOK, "text/html; charset=utf-8", file)
+	protected := e.Group("/", middlewares.MiddlewareJWT())
+	protected.OPTIONS("/online-users", func(c echo.Context) error {
+		return c.NoContent(http.StatusNoContent)
 	})
+	protected.OPTIONS("/latest-chat-date", func(c echo.Context) error {
+		return c.NoContent(http.StatusNoContent)
+	})
+	protected.GET("/online-users", GetOnlineUsers)
+	protected.GET("/chat-history", GetChatHistory)
+	protected.GET("/latest-chat-date", GetLatestChatDate)
+
+	e.HTTPErrorHandler = func(err error, c echo.Context) {
+		if c.Request().Method == echo.GET {
+			file, _ := ioutil.ReadFile("./chat-app/build/index.html")
+			etag := fmt.Sprintf("%x", md5.Sum(file))
+
+			c.Response().Header().Set("ETag", etag)
+			c.Response().Header().Set("Cache-Control", "no-cache")
+			if match := c.Request().Header.Get("If-None-Match"); match != "" {
+				if strings.Contains(match, etag) {
+					c.NoContent(http.StatusNotModified)
+					return
+				}
+			}
+			c.Blob(http.StatusOK, "text/html; charset=utf-8", file)
+			return
+		}
+		e.DefaultHTTPErrorHandler(err, c)
+	}
 }

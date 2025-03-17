@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"example.com/m/middlewares"
-	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -52,46 +52,47 @@ func TestParseToken_ExpiredToken(t *testing.T) {
 }
 
 func TestMiddlewareJWT(t *testing.T) {
-	router := gin.New()
-	router.Use(middlewares.MiddlewareJWT())
-	router.GET("/test", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "success", "username": c.GetString("username")})
+	e := echo.New()
+	e.Use(middlewares.MiddlewareJWT())
+	e.GET("/test", func(e echo.Context) error {
+		username := e.Get("username").(string)
+		return e.JSON(http.StatusOK, echo.Map{"status": "success", "username": username})
 	})
 
 	t.Run("valid token", func(t *testing.T) {
 		token, _ := middlewares.GenerateJWT("testuser")
-		req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
 
-		assert.Equal(t, http.StatusOK, w.Code)
-		assert.Contains(t, w.Body.String(), "testuser")
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "testuser")
 	})
 
 	t.Run("missing token", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, "/test", nil)
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
 
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	})
 
 	t.Run("invalid token format", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
 		req.Header.Set("Authorization", "InvalidTokenFormat")
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
 
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	})
 
 	t.Run("invalid token", func(t *testing.T) {
-		req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
 		req.Header.Set("Authorization", "Bearer invalid.token.here")
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
 
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	})
 }

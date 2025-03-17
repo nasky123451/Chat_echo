@@ -4,9 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"example.com/m/utils"
-	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
+	"github.com/labstack/echo/v4"
 )
 
 type Claims struct {
@@ -40,38 +39,43 @@ func ParseToken(tokenString string) (*Claims, error) {
 	return nil, err
 }
 
-func MiddlewareJWT() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// 获取 Authorization 头部
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			utils.RespondWithError(c, http.StatusUnauthorized, "Authorization header is required")
-			c.Abort() // 终止处理
-			return
+func MiddlewareJWT() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(e echo.Context) error {
+			// 获取 Authorization 头部
+			authHeader := e.Request().Header.Get("Authorization")
+			if authHeader == "" {
+				// 使用 Echo 的返回方式來返回錯誤
+				return e.JSON(http.StatusUnauthorized, map[string]string{
+					"error": "Authorization header is required",
+				})
+			}
+
+			// 检查 Bearer 令牌格式
+			if len(authHeader) < 7 || authHeader[:7] != "Bearer " {
+				// 使用 Echo 的返回方式來返回錯誤
+				return e.JSON(http.StatusUnauthorized, map[string]string{
+					"error": "Invalid authorization format",
+				})
+			}
+
+			// 提取令牌
+			tokenString := authHeader[7:] // 去掉 "Bearer " 前缀
+
+			// 解析和验证令牌
+			claims, err := ParseToken(tokenString)
+			if err != nil {
+				// 使用 Echo 的返回方式來返回錯誤
+				return e.JSON(http.StatusUnauthorized, map[string]string{
+					"error": "Invalid token",
+				})
+			}
+
+			// 将解析后的用户信息添加到上下文中
+			e.Set("username", claims.Username)
+
+			// 继续处理请求
+			return next(e)
 		}
-
-		// 检查 Bearer 令牌格式
-		if len(authHeader) < 7 || authHeader[:7] != "Bearer " {
-			utils.RespondWithError(c, http.StatusUnauthorized, "Invalid authorization format")
-			c.Abort() // 终止处理
-			return
-		}
-
-		// 提取令牌
-		tokenString := authHeader[7:] // 去掉 "Bearer " 前缀
-
-		// 解析和验证令牌
-		claims, err := ParseToken(tokenString)
-		if err != nil {
-			utils.RespondWithError(c, http.StatusUnauthorized, "Invalid token")
-			c.Abort() // 终止处理
-			return
-		}
-
-		// 将解析后的用户信息添加到上下文中
-		c.Set("username", claims.Username)
-
-		// 继续处理请求
-		c.Next()
 	}
 }

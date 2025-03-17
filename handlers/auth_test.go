@@ -15,7 +15,8 @@ import (
 	"example.com/m/config"
 	"example.com/m/handlers"
 	"example.com/m/metrics"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/gommon/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 )
@@ -73,9 +74,9 @@ func decrypt(key []byte, ciphertext string) ([]byte, error) {
 
 func TestRegisterUser(t *testing.T) {
 	// Set up Gin and your routes
-	gin.SetMode(gin.TestMode)
-	router := gin.Default()
-	router.POST("/register", handlers.RegisterUser)
+	e := echo.New()
+	e.Logger.SetLevel(log.DEBUG)
+	e.POST("/register", handlers.RegisterUser)
 
 	// Create the request payload
 	requestData := map[string]string{
@@ -100,7 +101,7 @@ func TestRegisterUser(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	// Send the request to the router
-	router.ServeHTTP(w, req)
+	e.ServeHTTP(w, req)
 
 	// Assert the response code and body
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -122,9 +123,9 @@ func TestRegisterUserDatabaseError(t *testing.T) {
 	// 重新初始化 Prometheus 指標
 	metrics.InitMetrics()
 	// 設置 gin 引擎
-	gin.SetMode(gin.TestMode)
-	router := gin.Default()
-	router.POST("/register", handlers.RegisterUser)
+	e := echo.New()
+	e.Logger.SetLevel(log.DEBUG)
+	e.POST("/register", handlers.RegisterUser)
 
 	// 模擬當 PostgreSQL 連接不可用的情況
 	config.PgConn = nil
@@ -143,7 +144,7 @@ func TestRegisterUserDatabaseError(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	e.ServeHTTP(w, req)
 
 	// 驗證回應狀態碼
 	assert.Equal(t, http.StatusInternalServerError, w.Code)

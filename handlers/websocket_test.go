@@ -11,6 +11,7 @@ import (
 	"example.com/m/middlewares"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,8 +24,8 @@ func init() {
 
 // 测试 HandleWebSocket 函数
 func TestHandleWebSocket(t *testing.T) {
-	router := gin.Default()
-	router.GET("/ws", handlers.HandleWebSocket) // 使用 handlers 包中的 HandleWebSocket 函数
+	e := echo.New()
+	e.GET("/ws", handlers.HandleWebSocket) // 使用 handlers 包中的 HandleWebSocket 函数
 
 	// 创建 WebSocket 请求
 	req, err := http.NewRequest(http.MethodGet, "/ws", nil)
@@ -118,8 +119,8 @@ func TestHandleWebSocket(t *testing.T) {
 // 测试处理无效 token 的情况
 func TestHandleWebSocketInvalidToken(t *testing.T) {
 
-	router := gin.Default()
-	router.GET("/ws", handlers.HandleWebSocket) // 使用 handlers 包中的 HandleWebSocket 函数
+	e := echo.New()
+	e.GET("/ws", handlers.HandleWebSocket) // 使用 handlers 包中的 HandleWebSocket 函数
 
 	req, err := http.NewRequest(http.MethodGet, "/ws", nil)
 	if err != nil {

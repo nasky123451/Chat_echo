@@ -11,7 +11,7 @@ services:
       - redis
     environment:
       - DB_CONNECTION_STRING=postgres://postgres:henry@postgres:5432/test?sslmode=disable
-      - REDIS_HOST=chat-redis-1
+      - REDIS_HOST=chat_echo-redis-1
       - REDIS_PASSWORD=
       - PROMETHEUS_URL=http://prometheus:9090
       - ENABLE_PROMETHEUS=${ENABLE_PROMETHEUS:-false} # 默認為 false

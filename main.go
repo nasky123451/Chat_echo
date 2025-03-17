@@ -3,18 +3,18 @@ package main
 import (
 	"example.com/m/config"
 	"example.com/m/handlers"
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 )
 
 func main() {
 	// Initialize configurations, databases, and other services
 	config.Init()
 
-	r := gin.Default()
+	e := echo.New()
 
 	// Setup routes
-	handlers.SetupRoutes(r)
+	handlers.SetupRoutes(e)
 
 	// Start the server
-	r.Run(":8080")
+	e.Logger.Fatal(e.Start(":8080"))
 }
