@@ -38,22 +38,26 @@ func TestParseToken_InvalidToken(t *testing.T) {
 func TestParseToken_ExpiredToken(t *testing.T) {
 	expiredClaims := &middlewares.Claims{
 		Username: "testuser",
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(-time.Hour).Unix(), // 设置令牌为过期状态
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(-time.Hour)), // 设为过期时间
 		},
 	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, expiredClaims)
 	expiredToken, err := token.SignedString([]byte("your-secret-key"))
 	assert.NoError(t, err)
 
 	claims, err := middlewares.ParseToken(expiredToken)
+
+	// 确保返回错误，并且 claims 为空
 	assert.Error(t, err)
 	assert.Nil(t, claims)
+	assert.ErrorContains(t, err, "token is expired")
 }
 
 func TestMiddlewareJWT(t *testing.T) {
 	e := echo.New()
-	e.Use(middlewares.MiddlewareJWT())
+	e.Use(middlewares.MiddlewareJWT)
 	e.GET("/test", func(e echo.Context) error {
 		username := e.Get("username").(string)
 		return e.JSON(http.StatusOK, echo.Map{"status": "success", "username": username})

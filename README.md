@@ -17,6 +17,10 @@ This is a Golang-based chat application that uses the Aho-Corasick algorithm for
   - [Installation](#installation)
   - [Running Tests](#running-tests)
   - [Running Basic Backend Functionality Tests](#running-basic-backend-functionality-tests)
+- [Prometheus Monitoring](#prometheus-monitoring)
+  - [Setting up Prometheus](#setting-up-prometheus)
+  - [Exposed Metrics](#exposed-metrics)
+  - [Example Prometheus Queries](#example-prometheus-queries)
 - [Future Improvements](#future-improvements)
 
 ## Features
@@ -54,7 +58,8 @@ Chat/
 │
 ├── middlewares/                # 中間件功能，處理請求前後的邏輯
 │   ├── jwt.go                  # JWT 身份驗證的中間件實現
-│   └── jwt_test.go             # JWT 中間件的單元測試
+│   ├── jwt_test.go             # JWT 中間件的單元測試
+│   └── prometheus.go           # Prometheus的中間件實現
 │
 ├── test/                       # 測試相關程式碼
 │   ├── filter.go               # 敏感詞過濾邏輯
@@ -205,6 +210,69 @@ go run filter.go
 ```
 
 This will execute the filter.go file, allowing you to test the backend functionality related to sensitive word filtering.
+
+## Prometheus Monitoring
+
+### Setting up Prometheus
+
+To enable Prometheus monitoring in this application, follow these steps:
+
+1. **Start Prometheus:**
+
+ - If you are not using Docker, execute the following command:
+
+```bash
+prometheus --config.file=prometheus.yml
+```
+
+2. **Access Prometheus:**
+
+ - You can access the Prometheus dashboard at http://localhost:9090.
+
+### Exposed Metrics
+
+Prometheus metrics are exposed at the /metrics endpoint. Key metrics include:
+
+ - Total HTTP requests (http_requests_total)
+ - Request durations (http_request_duration_seconds)
+ - Active users (active_users_total)
+ - Chat message counts (chat_message_sent_total, chat_message_received_total)
+ - User registrations (register_user_counter)
+ - Login attempts (login_counter)
+
+### Example Prometheus Queries
+
+Here are some example queries you can run in Prometheus:
+
+ - HTTP request count by route:
+
+```prometheus
+http_requests_total{route="/api/chat-history"}
+```
+
+ - HTTP request duration:
+
+```prometheus
+http_request_duration_seconds
+```
+
+ - Active users count:
+
+```prometheus
+active_users_total
+```
+
+ - Chat messages sent:
+
+```prometheus
+chat_message_sent_total
+```
+
+ - User registration count:
+
+```prometheus
+register_user_counter{status="success"}
+```
 
 ## Future Improvements
 

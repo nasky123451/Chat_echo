@@ -14,7 +14,7 @@ services:
       - REDIS_HOST=chat_echo-redis-1
       - REDIS_PASSWORD=
       - PROMETHEUS_URL=http://prometheus:9090
-      - ENABLE_PROMETHEUS=${ENABLE_PROMETHEUS:-false} # 默認為 false
+      - ENABLE_PROMETHEUS=true # 默認為 false
     networks:
       - backend
 
@@ -61,10 +61,8 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       - backend
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
+    environment:
+      - ENABLE_PROMETHEUS=true
 
 volumes:
   postgres-data:
@@ -73,9 +71,3 @@ volumes:
 networks:
   backend:
     driver: bridge
-
-# 使用自定義的啟用選項來控制 Prometheus 的啟動
-x-enable-prometheus:
-  &enable-prometheus
-  deploy:
-    replicas: 0  # 默認不啟用

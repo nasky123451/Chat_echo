@@ -118,7 +118,7 @@ const Chat = () => {
   // 获取在线用户
   const fetchOnlineUsers = async () => {
     try {
-      const response = await fetch('/online-users', {
+      const response = await fetch('/api/online-users', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -143,7 +143,7 @@ const Chat = () => {
     }
 
     try {
-      const response = await fetch(`/latest-chat-date?room=${encodeURIComponent(room)}`, {
+      const response = await fetch(`/api/latest-chat-date?room=${encodeURIComponent(room)}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -198,7 +198,7 @@ const Chat = () => {
     }
     
     try {
-      const response = await fetch(`/chat-history?date=${date || new Date().toISOString().split('T')[0]}&room=${room}`, {
+      const response = await fetch(`/api/chat-history?date=${date || new Date().toISOString().split('T')[0]}&room=${room}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
