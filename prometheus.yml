@@ -1,7 +1,9 @@
 global:
-  scrape_interval: 15s
+  scrape_interval: 15s  # 預設抓取間隔
 
 scrape_configs:
   - job_name: 'golang_app'
     static_configs:
-      - targets: ['localhost:8080']  # Go 應用的地址
+      - targets:
+          - 'localhost:8080'  # 本機環境
+          - 'app:8080'         # Docker 內部環境
